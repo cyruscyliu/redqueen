@@ -23,7 +23,7 @@ LINUX_URL="https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-$LINUX_VERSION.tar
 LINUX_MD5="70c4571bfb7ce7ccb14ff43b50165d43"
 
 QEMU_VERSION="2.9.0"
-QEMU_URL="http://download.qemu-project.org/qemu-2.9.0.tar.xz"
+QEMU_URL="http://download.qemu.org/qemu-2.9.0.tar.xz"
 QEMU_MD5="86c95eb3b24ffea3a84a4e3a856b4e26"
 
 echo "================================================="
@@ -52,17 +52,21 @@ for i in dpkg; do
 done
 
 echo "[*] Installing essentials tools ..."
-sudo -Eu root apt-get install make gcc libcapstone-dev bc libssl-dev python-pip python-pygraphviz -y gnuplot ruby python libgtk2.0-dev libc6-dev flex -y > /dev/null
+sudo -Eu root apt-get install make gcc libcapstone-dev bc libssl-dev python-pip python-pygraphviz -y gnuplot ruby python libgtk2.0-dev libc6-dev flex -y
 
 echo "[*] Installing build dependencies for QEMU $QEMU_VERSION ..."
-sudo -Eu root apt-get build-dep qemu-system-x86 -y > /dev/null
+sudo -Eu root apt-get build-dep qemu-system-x86 -y
 
 echo "[*] Installing python essentials ..."
-sudo -Eu root pip2.7 install mmh3 lz4 psutil > /dev/null 2> /dev/null
+sudo apt-get install -y python-pkgconfig python-lz4
+# setuptools-scm does not support python2 any more
+sudo -Eu root pip2 install setuptools-scm==5.0.2
+sudo -Eu root pip2 install mmh3 psutil
 
 echo
 echo "[*] Downloading QEMU $QEMU_VERSION ..."
-wget -O qemu.tar.gz $QEMU_URL 2> /dev/null
+sudo rm -rf qemu.tar.gz
+wget -O qemu.tar.gz $QEMU_URL
 
 echo "[*] Checking signature of QEMU $QEMU_VERSION ..."
 CHKSUM=`md5sum qemu.tar.gz| cut -d' ' -f1`
@@ -73,6 +77,7 @@ if [ "$CHKSUM" != "$QEMU_MD5" ]; then
 fi
 
 echo "[*] Unpacking QEMU $QEMU_VERSION ..."
+sudo rm -rf qemu-$QEMU_VERSION
 tar xf qemu.tar.gz
 
 echo "[*] Patching QEMU $QEMU_VERSION ..."
@@ -104,7 +109,8 @@ cd ..
 
 echo
 echo "[*] Downloading Kernel $LINUX_VERSION ..."
-wget -O kernel.tar.gz $LINUX_URL 2> /dev/null
+sudo rm -rf kernel.tar.gz
+wget -O kernel.tar.gz $LINUX_URL
 
 echo "[*] Checking signature of Kernel $LINUX_VERSION ..."
 CHKSUM=`md5sum kernel.tar.gz| cut -d' ' -f1`
@@ -117,24 +123,25 @@ if [ "$CHKSUM" != "$LINUX_MD5" ]; then
 fi
 
 echo "[*] Unpacking Kernel $LINUX_VERSION ..."
+sudo rm -rf linux-$LINUX_VERSION
 tar xf kernel.tar.gz
 
 echo "[*] Patching Kernel $LINUX_VERSION ..."
-patch linux-$LINUX_VERSION/arch/x86/kvm/Makefile < KVM-PT/arch/x86/kvm/Makefile.patch > /dev/null
-patch linux-$LINUX_VERSION/arch/x86/kvm/Kconfig < KVM-PT/arch/x86/kvm/Kconfig.patch > /dev/null
-patch linux-$LINUX_VERSION/arch/x86/kvm/mmu.c < KVM-PT/arch/x86/kvm/mmu.c.patch > /dev/null
-patch linux-$LINUX_VERSION/arch/x86/kvm/vmx.c < KVM-PT/arch/x86/kvm/vmx.c.patch > /dev/null
-patch linux-$LINUX_VERSION/arch/x86/kvm/svm.c < KVM-PT/arch/x86/kvm/svm.c.patch > /dev/null
-patch linux-$LINUX_VERSION/arch/x86/kvm/x86.c < KVM-PT/arch/x86/kvm/x86.c.patch > /dev/null
-patch linux-$LINUX_VERSION/arch/x86/include/asm/kvm_host.h < KVM-PT/arch/x86/include/asm/kvm_host.h.patch > /dev/null
-patch linux-$LINUX_VERSION/arch/x86/include/uapi/asm/kvm.h < KVM-PT/arch/x86/include/uapi/asm/kvm.h.patch > /dev/null
-patch linux-$LINUX_VERSION/include/uapi/linux/kvm.h <  KVM-PT/include/uapi/linux/kvm.h.patch > /dev/null
+patch linux-$LINUX_VERSION/arch/x86/kvm/Makefile < KVM-PT/arch/x86/kvm/Makefile.patch
+patch linux-$LINUX_VERSION/arch/x86/kvm/Kconfig < KVM-PT/arch/x86/kvm/Kconfig.patch
+patch linux-$LINUX_VERSION/arch/x86/kvm/mmu.c < KVM-PT/arch/x86/kvm/mmu.c.patch
+patch linux-$LINUX_VERSION/arch/x86/kvm/vmx.c < KVM-PT/arch/x86/kvm/vmx.c.patch
+patch linux-$LINUX_VERSION/arch/x86/kvm/svm.c < KVM-PT/arch/x86/kvm/svm.c.patch
+patch linux-$LINUX_VERSION/arch/x86/kvm/x86.c < KVM-PT/arch/x86/kvm/x86.c.patch
+patch linux-$LINUX_VERSION/arch/x86/include/asm/kvm_host.h < KVM-PT/arch/x86/include/asm/kvm_host.h.patch
+patch linux-$LINUX_VERSION/arch/x86/include/uapi/asm/kvm.h < KVM-PT/arch/x86/include/uapi/asm/kvm.h.patch
+patch linux-$LINUX_VERSION/include/uapi/linux/kvm.h <  KVM-PT/include/uapi/linux/kvm.h.patch
 
 cp KVM-PT/arch/x86/kvm/vmx.h linux-$LINUX_VERSION/arch/x86/kvm/
 cp KVM-PT/arch/x86/kvm/vmx_pt.h linux-$LINUX_VERSION/arch/x86/kvm/
 cp KVM-PT/arch/x86/kvm/vmx_pt.c linux-$LINUX_VERSION/arch/x86/kvm/
 
-mkdir linux-$LINUX_VERSION/usermode_test/ 2> /dev/null
+mkdir linux-$LINUX_VERSION/usermode_test/
 cp KVM-PT/usermode_test/support_test.c linux-$LINUX_VERSION/usermode_test/
 cp KVM-PT/usermode_test/test.c linux-$LINUX_VERSION/usermode_test/
 cp KVM-PT/load.sh linux-$LINUX_VERSION/load.sh
@@ -150,7 +157,7 @@ echo "-------------------------------------------------"
 make -j 8
 echo "-------------------------------------------------"
 
-echo "KERNEL==\"kvm\", GROUP=\"kvm\"" | sudo -Eu root tee /etc/udev/rules.d/40-permissions.rules > /dev/null
+echo "KERNEL==\"kvm\", GROUP=\"kvm\"" | sudo -Eu root tee /etc/udev/rules.d/40-permissions.rules
 
 sudo -Eu root groupadd kvm
 sudo -Eu root usermod -a -G kvm $USER
